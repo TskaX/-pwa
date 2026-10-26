@@ -284,7 +284,7 @@ function renderBook(){
   const s=setOf(),p=period(),t=todayS();
   const inP=x=>x.date>=p.start&&(!p.end||x.date<=p.end);
   let spent=0,inc=0;for(const x of txArr())if(inP(x)){x.type==='expense'?spent+=+x.amount:inc+=+x.amount}
-  const base=+s.budget+(s.mode==='total'&&s.incomeAdds?inc:0);
+  const base=+s.budget+(s.incomeAdds?inc:0);
   const remain=base-spent;
   const up=upcoming(p.end||`${curM()}-${pad(dim(curM()))}`);
   const pct=base>0?Math.min(100,spent/base*100):100;
@@ -301,7 +301,7 @@ function renderBook(){
     <div><dt>已支出</dt><dd>${money(spent)}</dd></div>
     <div><dt>${r3}</dt><dd>${r3v}</dd></div>
     <div><dt>待扣固定費用</dt><dd>${money(up.sum)}</dd></div>
-    ${s.mode==='total'&&s.incomeAdds?`<div><dt>期間收入</dt><dd>${money(inc)}</dd></div><div><dt>扣固定後</dt><dd>${remain-up.sum<0?'−':''}${money(remain-up.sum)}</dd></div>`:`<div><dt>本期收入</dt><dd>${money(inc)}</dd></div><div><dt>扣固定後可用</dt><dd>${remain-up.sum<0?'−':''}${money(remain-up.sum)}</dd></div>`}
+    ${s.mode==='total'?`<div><dt>期間收入${s.incomeAdds?'（已加入）':''}</dt><dd>${money(inc)}</dd></div><div><dt>扣固定後</dt><dd>${remain-up.sum<0?'−':''}${money(remain-up.sum)}</dd></div>`:`<div><dt>本期收入${s.incomeAdds?'（已加入）':''}</dt><dd>${money(inc)}</dd></div><div><dt>扣固定後可用</dt><dd>${remain-up.sum<0?'−':''}${money(remain-up.sum)}</dd></div>`}
   </dl>`;
 }
 function monthNav(){return `<div class="monthnav"><button class="icon-btn" data-act="m-prev" aria-label="上個月">‹</button><strong>${ymLabel(ui.month)}</strong><button class="icon-btn" data-act="m-next" aria-label="下個月">›</button></div>`}
@@ -321,8 +321,8 @@ function vList(){
   const groups=new Map();rows.forEach(x=>{if(!groups.has(x.date))groups.set(x.date,[]);groups.get(x.date).push(x)});
   const allCats=[...new Set([...s.cats.expense,...s.cats.income,...mon.map(x=>x.cat)])];
   let body='';
-  for(const[d,xs]of groups){const dt=pd(d);const de=xs.filter(x=>x.type==='expense').reduce((a,x)=>a+ +x.amount,0);
-    body+=`<div class="day"><div class="day-h"><span>${dt.getMonth()+1}/${dt.getDate()} 週${WK[dt.getDay()]}${d===todayS()?' · 今天':''}</span><span class="num">${de?'支出 '+money(de):''}</span></div>${xs.map(itemRow).join('')}</div>`}
+  for(const[d,xs]of groups){const dt=pd(d);const de=xs.filter(x=>x.type==='expense').reduce((a,x)=>a+ +x.amount,0),di=xs.filter(x=>x.type==='income').reduce((a,x)=>a+ +x.amount,0);
+    body+=`<div class="day"><div class="day-h"><span>${dt.getMonth()+1}/${dt.getDate()} 週${WK[dt.getDay()]}${d===todayS()?' · 今天':''}</span><span class="num">${[de?'支出 '+money(de):'',di?'收入 '+money(di):''].filter(Boolean).join(' · ')}</span></div>${xs.map(itemRow).join('')}</div>`}
   if(!body)body=mon.length?'<div class="empty"><b>沒有符合的紀錄</b>換個關鍵字或篩選條件試試。</div>':`<div class="empty"><b>${ymLabel(ui.month)}還沒有紀錄</b>點右下角「＋ 記一筆」開始記帳。</div>`;
   return `${monthNav()}
   <div class="sumline"><div><span>支出</span><b>${money(ex)}</b></div><div><span>收入</span><b>${money(inc)}</b></div><div><span>結餘</span><b>${inc-ex<0?'−':''}${money(inc-ex)}</b></div></div>
@@ -388,7 +388,7 @@ function vSettings(){
    <div class="grid2"><div class="field"><label for="s-budget">${s.mode==='month'?'每期預算 (NT$)':'起始金額 (NT$)'}</label><input id="s-budget" class="num" inputmode="decimal" value="${s.budget}"></div>
    ${s.mode==='month'?`<div class="field"><label for="s-day">每月起算日</label><select id="s-day">${Array.from({length:28},(_,i)=>`<option value="${i+1}" ${+s.startDay===i+1?'selected':''}>${i+1} 日${i===0?'（月初）':''}</option>`).join('')}</select><span class="hint">例如發薪日是 5 號，就設 5 日。</span></div>`
    :`<div class="field"><label for="s-since">開始扣款日期</label><input id="s-since" type="date" value="${s.since}"></div>`}</div>
-   ${s.mode==='total'?`<label class="toggle"><input type="checkbox" id="s-inc" ${s.incomeAdds?'checked':''}> 收入加回餘額</label>`:''}
+   <div class="field"><label class="toggle"><input type="checkbox" id="s-inc" ${s.incomeAdds?'checked':''}> ${s.mode==='month'?'收入加回本期可用':'收入加回餘額'}</label><span class="hint">${s.mode==='month'?'開啟後，本期記的收入（例如獎金、打工）會加進本期可用的金額。':'開啟後，收入會加回帳戶餘額。'}</span></div>
    <div class="row-btns"><button class="btn pri" data-act="save-settings">儲存設定</button></div></div></div>
   <div class="card"><h3>分類</h3><div style="display:flex;flex-direction:column;gap:14px">${catBlock('expense','支出分類')}${catBlock('income','收入分類')}</div></div>
   <div class="card"><h3>資料與備份</h3><p class="note" style="margin-top:0">所有資料只存在這支手機上，不會上傳到任何地方。刪除 App 或清除瀏覽器資料時，帳本也會一起消失，建議每個月備份一次，存到雲端硬碟或傳給自己。<br><b>${lb}</b></p><div class="row-btns">
@@ -464,7 +464,7 @@ document.addEventListener('click',async e=>{
       const id=o.id||uid();closeSheet();await B.setRec(id,clean(rec));toast('已儲存固定項目');postRecurring();break}
     case 'mode':{await B.setSettings({...s,mode:v,since:s.mode!==v&&v==='total'?todayS():s.since});break}
     case 'save-settings':{const bud=evalAmt($('#s-budget').value);if(!(bud>=0)){toast('請輸入有效的金額');return}
-      const n={...s,budget:bud};if(s.mode==='month')n.startDay=+$('#s-day').value;else{n.since=$('#s-since').value||todayS();n.incomeAdds=$('#s-inc').checked}
+      const n={...s,budget:bud};n.incomeAdds=$('#s-inc').checked;if(s.mode==='month')n.startDay=+$('#s-day').value;else n.since=$('#s-since').value||todayS();
       await B.setSettings(n);toast('設定已儲存');break}
     case 'add-cat':{const t=b.dataset.type,inp=$('#newcat-'+t),name=inp.value.trim();if(!name)return;if(s.cats[t].includes(name)){toast('這個分類已經存在');return}
       await B.setSettings({...s,cats:{...s.cats,[t]:[...s.cats[t],name]}});break}

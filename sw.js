@@ -1,6 +1,6 @@
 // 口袋帳本 service worker：快取 App 本身，讓沒有網路時也能開啟。
 // 更新 App 檔案後，把版本號 +1，手機下次開啟就會換成新版。
-const CACHE = 'pocket-ledger-v1';
+const CACHE = 'pocket-ledger-v2';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
